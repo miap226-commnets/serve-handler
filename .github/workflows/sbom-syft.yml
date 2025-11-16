@@ -116,7 +116,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          docker run --rm -v "$PWD/source:/work" aboutcode/scancode-toolkit:v32.4.1 \
+          docker run --rm -v "$PWD/source:/work" ghcr.io/aboutcode-org/scancode-toolkit:v32.4.1 \
             --format json-pp \
             --license --copyright \
             --info \
