@@ -24,8 +24,10 @@ jobs:
           ref: ${{ inputs.release_tag }}
           path: source
 
-      - name: Show Node.js version
-        run: node -v || true
+      - name: Checkout this repo for workflow scripts
+        uses: actions/checkout@v4
+        with:
+          path: automation
 
       - name: Setup Node.js 18.x
         uses: actions/setup-node@v4
@@ -57,9 +59,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          # 以源码目录为扫描源；确保包含 node_modules（嵌套依赖）
           syft -vv dir:source -o spdx-json > sbom.spdx.json
-          # 简单一致性检查（非严格模式）
           test "$(jq -r '.spdxVersion' sbom.spdx.json)" = "SPDX-2.3"
 
       - name: Export full npm dependency tree (prod+dev)
@@ -80,13 +80,13 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          bash scripts/list-binaries.sh source > binary-hashes.txt
+          bash automation/scripts/list-binaries.sh source > binary-hashes.txt
 
       - name: Extract SBOM metrics & CSV
         shell: bash
         run: |
           set -euxo pipefail
-          bash scripts/extract-spdx-metrics.sh sbom.spdx.json
+          bash automation/scripts/extract-spdx-metrics.sh sbom.spdx.json
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -100,7 +100,6 @@ jobs:
             metrics.txt
             binary-hashes.txt
 
-  # 可选：文件级许可证与版权扫描（排除 node_modules 以控制时长）
   license-scan-files:
     name: Optional - ScanCode file-level license & copyright (no node_modules)
     runs-on: ubuntu-latest
@@ -127,7 +126,6 @@ jobs:
             --exclude "**/node_modules/**" \
             --exclude "**/dist/**" \
             /work > scancode-report.json
-          # 简要汇总
           jq '{
             files: (.files | length),
             detected_licenses: ( [ .files[]?.licenses[]?.spdx_license_key ] | map(select(.!=null)) | unique | sort ),
